@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import './index.css';
 
 // ----------------------------------------------------
-// INITIAL DATA
+// CLUSTER & SYSTEM INITIAL STATE
 // ----------------------------------------------------
 const INITIAL_NODES = [
   { id: 'NodeA', role: 'Leader', health: 100, load: 14, status: 'Active', ip: '192.168.1.101', term: 1, x: 200, y: 120 },
@@ -15,115 +15,57 @@ const INITIAL_FILES = [
   { name: 'kernel.bin', type: 'file', size: '64 KB', permissions: '-rwxr-xr-x', path: '/boot/kernel.bin', content: '[x86 Executable Binary Code: Entry 0x1000, 32-bit Protected Mode, GDT loaded at 0x800]' },
   { name: 'secret.txt', type: 'file', size: '128 B', permissions: '-rw-r--r--', path: '/root/secret.txt', content: 'CLUSTER_MASTER_KEY=0x9FA82C10E8\nRAFT_TOKEN=d83921af78c02\nREGION=ap-south-1' },
   { name: 'hosts.conf', type: 'file', size: '256 B', permissions: '-rw-r--r--', path: '/etc/hosts.conf', content: '127.0.0.1 localhost\n192.168.1.101 NodeA\n192.168.1.102 NodeB\n192.168.1.103 NodeC\n192.168.1.104 NodeD' },
-  { name: 'boot.log', type: 'file', size: '1.2 KB', permissions: '-rw-r--r--', path: '/var/log/boot.log', content: '[0.000000] Kernel entry reached at 0x1000\n[0.000014] Enabling A20 gate via keyboard controller\n[0.000045] Loading 32-bit Global Descriptor Table (GDT)\n[0.000120] Paging enabled: 1024 Page Tables mapped (0x0 - 0x400000)\n[0.000250] PIT Timer Interrupt IRQ 0 set to 100 Hz\n[0.000380] Round-Robin scheduler initialized with idle process PID 0\n[0.000510] ATA PIO Primary Master detected: 512 MB QEMU HARDDISK' },
-  { name: 'main.py', type: 'file', size: '180 B', permissions: '-rw-r--r--', path: '/root/main.py', content: '# Distributed Task Script\nfor i in range(1, 6):\n    print(f"Executing cluster task {i} on distributed core...")\nprint("All 5 tasks completed successfully!")' },
-  { name: 'server.c', type: 'file', size: '420 B', permissions: '-rw-r--r--', path: '/root/server.c', content: '#include <stdio.h>\n\nint main() {\n    printf("DistributedOS RPC Server v1.0.4 starting on port 8080...\\n");\n    printf("Listening for Raft AppendEntries and VoteRequests.\\n");\n    return 0;\n}' },
+  { name: 'boot.log', type: 'file', size: '1.2 KB', permissions: '-rw-r--r--', path: '/var/log/boot.log', content: '[0.000000] Kernel entry reached at 0x1000\n[0.000014] Enabling A20 gate via keyboard controller\n[0.000045] Loading 32-bit Global Descriptor Table (GDT)\n[0.000120] Paging enabled: 1024 Page Tables mapped (0x0 - 0x400000)\n[0.000250] PIT Timer Interrupt IRQ 0 set to 100 Hz\n[0.000380] Round-Robin scheduler initialized with idle process PID 0' },
   { name: 'bin/', type: 'folder', size: '--', permissions: 'drwxr-xr-x', path: '/bin', content: 'sh, cat, ls, pwd, echo, kill, ps, ping, python, gcc, node, top, ifconfig, free, df' },
   { name: 'etc/', type: 'folder', size: '--', permissions: 'drwxr-xr-x', path: '/etc', content: 'hosts.conf, system.conf, network.conf, raft.conf, resolv.conf' }
 ];
-
-const CODE_TEMPLATES = {
-  python: `# Python 3.12 (DistributedOS In-Browser Engine)
-def raft_consensus_demo():
-    nodes = ["NodeA", "NodeB", "NodeC"]
-    leader = nodes[0]
-    print(f"Current Leader: {leader}")
-    
-    # Simulate RPC Heartbeats
-    for node in nodes[1:]:
-        print(f"Heartbeat sent to {node} -> ACK (term=1)")
-        
-    # Process tasks
-    tasks = [f"Task-{i}" for i in range(1, 4)]
-    for task in tasks:
-        print(f"Distributed task {task} committed via consensus quorum!")
-
-raft_consensus_demo()`,
-  javascript: `// JavaScript / Node.js Engine
-function simulateClusterMetrics() {
-  const nodes = [
-    { id: 'NodeA', health: 100, role: 'Leader' },
-    { id: 'NodeB', health: 98, role: 'Follower' },
-    { id: 'NodeC', health: 95, role: 'Follower' }
-  ];
-  
-  console.log("=== Cluster Status Report ===");
-  nodes.forEach(n => {
-    console.log(\`[\${n.id}] Status: OK | Role: \${n.role} | Health: \${n.health}%\`);
-  });
-  
-  const avgHealth = nodes.reduce((acc, n) => acc + n.health, 0) / nodes.length;
-  console.log(\`Average Cluster Health: \${avgHealth.toFixed(1)}%\`);
-}
-
-simulateClusterMetrics();`,
-  c: `// C Language (GCC x86 Simulated Compiler)
-#include <stdio.h>
-
-int main() {
-    printf("=========================================\\n");
-    printf("  DistributedOS Bare-Metal Kernel v1.0.4  \\n");
-    printf("=========================================\\n");
-    
-    int pages = 1024;
-    int page_size = 4096; // 4KB
-    printf("Mapped Virtual Memory: %d KB (%d MB)\\n", (pages * page_size) / 1024, (pages * page_size) / (1024 * 1024));
-    printf("Paging Status: ACTIVE (CR0 bit 31 = 1)\\n");
-    printf("Round-Robin Multitasking: ONLINE\\n");
-    return 0;
-}`,
-  go: `// Go Distributed Cluster Engine
-package main
-
-import "fmt"
-
-func main() {
-    fmt.Println("DistributedOS Raft Consensus Engine (Go)")
-    nodes := []string{"NodeA", "NodeB", "NodeC"}
-    fmt.Printf("Cluster initialized with %d active nodes.\\n", len(nodes))
-    
-    leader := nodes[0]
-    fmt.Printf("Node %s elected as Leader for Term 1.\\n", leader)
-    
-    for i := 1; i <= 3; i++ {
-        fmt.Printf("[RPC Dispatch] Task #%d replicated across majority quorum.\\n", i)
-    }
-    fmt.Println("Cluster Quorum verified: 100% consistent state.")
-}`
-};
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [nodes, setNodes] = useState(INITIAL_NODES);
   const [term, setTerm] = useState(1);
-  const [tasksCount, setTasksCount] = useState(748);
+  const [tasksCount, setTasksCount] = useState(754);
   const [isElectionInProgress, setIsElectionInProgress] = useState(false);
   const [currentDir, setCurrentDir] = useState('/root');
   const [files, setFiles] = useState(INITIAL_FILES);
   const [selectedFile, setSelectedFile] = useState(INITIAL_FILES[1]);
   const [fileEditContent, setFileEditContent] = useState(INITIAL_FILES[1].content);
 
+  // ----------------------------------------------------
+  // UNIVERSAL CODE RUNNER & DYNAMIC REGISTRY STATE
+  // ----------------------------------------------------
+  const [availableLanguages, setAvailableLanguages] = useState([]);
+  const [isRegistryLoading, setIsRegistryLoading] = useState(true);
+  const [selectedLanguage, setSelectedLanguage] = useState(null);
+  const [langCategoryFilter, setLangCategoryFilter] = useState('All');
+  const [langSearchQuery, setLangSearchQuery] = useState('');
+  
+  // Multi-file editor state
+  const [editorFiles, setEditorFiles] = useState([{ name: 'main.py', content: '' }]);
+  const [activeFileIndex, setActiveFileIndex] = useState(0);
+  const [stdinInput, setStdinInput] = useState('');
+  const [showStdin, setShowStdin] = useState(false);
+  
+  // Execution state
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [executionResult, setExecutionResult] = useState(null);
+  const [resultTab, setResultTab] = useState('stdout'); // 'stdout', 'compile', 'preview'
+  const fileInputRef = useRef(null);
+
   // Distributed Key-Value Store
   const [kvStore, setKvStore] = useState([
     { key: 'cluster_name', value: 'Production-Alpha-01', term: 1, node: 'NodeA' },
     { key: 'max_connections', value: '4096', term: 1, node: 'NodeA' },
-    { key: 'heartbeat_timeout_ms', value: '500', term: 1, node: 'NodeA' },
-    { key: 'scheduler_algorithm', value: 'Round-Robin-Preemptive', term: 1, node: 'NodeA' }
+    { key: 'heartbeat_timeout_ms', value: '500', term: 1, node: 'NodeA' }
   ]);
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
 
-  // Code Runner
-  const [codeLanguage, setCodeLanguage] = useState('python');
-  const [codeSource, setCodeSource] = useState(CODE_TEMPLATES.python);
-  const [codeOutput, setCodeOutput] = useState('');
-  const [isCodeRunning, setIsCodeRunning] = useState(false);
-
   // Terminal state
   const [cliInput, setCliInput] = useState('');
   const [cliHistory, setCliHistory] = useState([
-    { type: 'system', text: 'DistributedOS Kernel v1.0.4 - Full GNU/Linux Shell & x86 Protected Mode' },
-    { type: 'system', text: 'Type "help" for a list of Linux commands, or try "pwd", "ls", "ps", "uname -a", "python", "date".' }
+    { type: 'system', text: 'DistributedOS Kernel v1.0.4 - Full GNU/Linux Shell & Universal Runtime API' },
+    { type: 'system', text: 'Type "help" for Linux commands, or try "pwd", "ls", "ps", "uname -a", "date", "df -h".' }
   ]);
   const terminalEndRef = useRef(null);
 
@@ -135,10 +77,9 @@ export default function App() {
 
   // Cluster activity log
   const [logs, setLogs] = useState([
-    { time: '15:40:01', msg: 'Kernel bootloader executed from 0x7C00.' },
-    { time: '15:40:02', msg: 'Paging initialized: 1024 Page Tables mapped.' },
-    { time: '15:40:04', msg: 'Raft consensus initialized. NodeA elected as Leader.' },
-    { time: '15:40:10', msg: 'RPC server listening on ports 8001-8004.' }
+    { time: '16:00:01', msg: 'Kernel bootloader executed from 0x7C00.' },
+    { time: '16:00:02', msg: 'Universal Multi-Language Execution Server connected on port 5050.' },
+    { time: '16:00:04', msg: 'Raft consensus initialized. NodeA elected as Leader.' }
   ]);
 
   const addLog = (msg) => {
@@ -146,12 +87,132 @@ export default function App() {
     setLogs((prev) => [{ time, msg }, ...prev.slice(0, 24)]);
   };
 
+  // ----------------------------------------------------
+  // FETCH DYNAMIC LANGUAGE REGISTRY FROM BACKEND API
+  // ----------------------------------------------------
+  useEffect(() => {
+    async function loadLanguages() {
+      setIsRegistryLoading(true);
+      try {
+        const res = await fetch('/api/languages');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.languages)) {
+          setAvailableLanguages(data.languages);
+          // Pick default installed language (Python or Rust or JS)
+          const defaultLang = data.languages.find((l) => l.id === 'python') || data.languages[0];
+          selectLanguage(defaultLang);
+        }
+      } catch (err) {
+        console.error('Failed to load dynamic languages from /api/languages:', err);
+      } finally {
+        setIsRegistryLoading(false);
+      }
+    }
+    loadLanguages();
+  }, []);
+
+  const selectLanguage = (lang) => {
+    if (!lang) return;
+    setSelectedLanguage(lang);
+    const primaryExt = lang.extensions ? lang.extensions[0] : '.txt';
+    const mainName = lang.id === 'java' ? 'Main.java' : `main${primaryExt}`;
+    setEditorFiles([{ name: mainName, content: lang.starterCode || '' }]);
+    setActiveFileIndex(0);
+    setExecutionResult(null);
+  };
+
+  // ----------------------------------------------------
+  // EXECUTE CODE VIA POST /api/execute
+  // ----------------------------------------------------
+  const handleExecute = async () => {
+    if (!selectedLanguage) return;
+
+    if (!selectedLanguage.installed) {
+      setExecutionResult({
+        success: false,
+        stdout: '',
+        stderr: `Runtime not installed: The compiler or interpreter for '${selectedLanguage.name}' is not installed on the host system.\nExecution disabled until '${selectedLanguage.binary}' is installed on PATH.`,
+        exitCode: 127,
+        executionTimeMs: 0
+      });
+      setResultTab('stdout');
+      return;
+    }
+
+    setIsExecuting(true);
+    setExecutionResult(null);
+
+    const activeFile = editorFiles[activeFileIndex] || editorFiles[0];
+
+    try {
+      const response = await fetch('/api/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          language: selectedLanguage.id,
+          code: activeFile.content,
+          stdin: stdinInput,
+          files: editorFiles.slice(1) // send auxiliary files
+        })
+      });
+
+      const result = await response.json();
+      setExecutionResult(result);
+
+      if (result.previewPayload) {
+        setResultTab('preview');
+      } else if (result.compileOutput && !result.success) {
+        setResultTab('compile');
+      } else {
+        setResultTab('stdout');
+      }
+
+      addLog(`⚡ Universal Runner: Executed ${selectedLanguage.name} (${result.executionTimeMs?.toFixed(1)} ms, exit: ${result.exitCode})`);
+    } catch (err) {
+      setExecutionResult({
+        success: false,
+        stdout: '',
+        stderr: `Network/API Error: ${err.message}. Ensure the backend execution server is active.`,
+        exitCode: -1,
+        executionTimeMs: 0
+      });
+      setResultTab('stdout');
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
+  // Download Code File
+  const handleDownloadCode = () => {
+    const activeFile = editorFiles[activeFileIndex];
+    if (!activeFile) return;
+    const blob = new Blob([activeFile.content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = activeFile.name;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Upload Code File
+  const handleUploadFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target.result;
+      setEditorFiles((prev) => [...prev, { name: file.name, content }]);
+      setActiveFileIndex(editorFiles.length);
+    };
+    reader.readAsText(file);
+  };
+
   // Periodic heartbeat animation & packet dots on network graph
   useEffect(() => {
     const interval = setInterval(() => {
       const leader = nodes.find((n) => n.role === 'Leader' && n.status === 'Active');
       if (leader) {
-        // Jitter loads
         setNodes((prevNodes) =>
           prevNodes.map((node) => {
             if (node.status === 'Active') {
@@ -163,7 +224,6 @@ export default function App() {
           })
         );
 
-        // Spawn traveling packet animation on graph
         const newDots = nodes
           .filter((n) => n.id !== leader.id && n.status === 'Active')
           .map((follower) => ({
@@ -187,93 +247,7 @@ export default function App() {
     }
   }, [cliHistory, activeTab]);
 
-  // Handle template switch in code runner
-  const handleLanguageChange = (lang) => {
-    setCodeLanguage(lang);
-    setCodeSource(CODE_TEMPLATES[lang]);
-    setCodeOutput('');
-  };
-
-  // Run Code in Browser
-  const handleExecuteCode = () => {
-    setIsCodeRunning(true);
-    setCodeOutput('Compiling & Executing on DistributedOS virtual runtime...\n');
-
-    setTimeout(() => {
-      const startTime = performance.now();
-      let outputBuffer = '';
-
-      try {
-        if (codeLanguage === 'javascript') {
-          const logsCaptured = [];
-          const customConsole = {
-            log: (...args) => logsCaptured.push(args.map((a) => (typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a))).join(' ')),
-            warn: (...args) => logsCaptured.push('[WARN] ' + args.join(' ')),
-            error: (...args) => logsCaptured.push('[ERROR] ' + args.join(' '))
-          };
-          const runner = new Function('console', codeSource);
-          runner(customConsole);
-          outputBuffer = logsCaptured.join('\n');
-        } else if (codeLanguage === 'python') {
-          // Micro Python evaluator in JS
-          const lines = codeSource.split('\n');
-          const printed = [];
-          for (let line of lines) {
-            line = line.trim();
-            if (line.startsWith('#') || !line) continue;
-            if (line.startsWith('print(')) {
-              let content = line.substring(6, line.length - 1);
-              if (content.startsWith('f"') && content.endsWith('"')) {
-                content = content.slice(2, -1).replace(/{([^}]+)}/g, 'NodeA');
-              } else if ((content.startsWith('"') && content.endsWith('"')) || (content.startsWith("'") && content.endsWith("'"))) {
-                content = content.slice(1, -1);
-              }
-              printed.push(content);
-            } else if (line.includes('(') && line.endsWith(')')) {
-              // Function invocation
-              if (line.includes('raft_consensus_demo')) {
-                printed.push('Current Leader: NodeA');
-                printed.push('Heartbeat sent to NodeB -> ACK (term=1)');
-                printed.push('Heartbeat sent to NodeC -> ACK (term=1)');
-                printed.push('Distributed task Task-1 committed via consensus quorum!');
-                printed.push('Distributed task Task-2 committed via consensus quorum!');
-                printed.push('Distributed task Task-3 committed via consensus quorum!');
-              }
-            }
-          }
-          outputBuffer = printed.length ? printed.join('\n') : '[Python 3.12 executed with exit code 0]';
-        } else if (codeLanguage === 'c') {
-          outputBuffer =
-            '=========================================\n' +
-            '  DistributedOS Bare-Metal Kernel v1.0.4  \n' +
-            '=========================================\n' +
-            'Mapped Virtual Memory: 4096 KB (4 MB)\n' +
-            'Paging Status: ACTIVE (CR0 bit 31 = 1)\n' +
-            'Round-Robin Multitasking: ONLINE\n\n' +
-            '[Program exited with code 0 in 4.2ms]';
-        } else if (codeLanguage === 'go') {
-          outputBuffer =
-            'DistributedOS Raft Consensus Engine (Go)\n' +
-            'Cluster initialized with 3 active nodes.\n' +
-            'Node NodeA elected as Leader for Term 1.\n' +
-            '[RPC Dispatch] Task #1 replicated across majority quorum.\n' +
-            '[RPC Dispatch] Task #2 replicated across majority quorum.\n' +
-            '[RPC Dispatch] Task #3 replicated across majority quorum.\n' +
-            'Cluster Quorum verified: 100% consistent state.\n\n' +
-            '[Process finished with exit code 0]';
-        }
-      } catch (err) {
-        outputBuffer = `Runtime Exception: ${err.message}`;
-      }
-
-      const elapsed = (performance.now() - startTime).toFixed(2);
-      setCodeOutput(outputBuffer + `\n\n------------------------------------\nFinished execution in ${elapsed} ms`);
-      setIsCodeRunning(false);
-      addLog(`💻 Executed ${codeLanguage.toUpperCase()} script in sandbox`);
-    }, 450);
-  };
-
-  // Dispatch Task
+  // Cluster Actions
   const handleDispatchTask = () => {
     const activeNodes = nodes.filter((n) => n.status === 'Active');
     if (activeNodes.length === 0) {
@@ -283,28 +257,22 @@ export default function App() {
     const targetNode = activeNodes[Math.floor(Math.random() * activeNodes.length)];
     const newTaskId = tasksCount + 1;
     setTasksCount(newTaskId);
-
     setNodes((prev) =>
       prev.map((n) => (n.id === targetNode.id ? { ...n, load: Math.min(98, n.load + 12) } : n))
     );
-
     addLog(`⚡ RPC Dispatch: Task #${newTaskId} routed to ${targetNode.id} (${targetNode.ip})`);
   };
 
-  // Kill Leader (Failover)
   const handleKillLeader = () => {
     const leader = nodes.find((n) => n.role === 'Leader' && n.status === 'Active');
     if (!leader) {
       addLog('⚠️ No active leader found to kill.');
       return;
     }
-
     addLog(`🚨 CRITICAL: Leader ${leader.id} was forcefully TERMINATED!`);
-
     setNodes((prev) =>
       prev.map((n) => (n.id === leader.id ? { ...n, status: 'Offline', role: 'Dead', health: 0, load: 0 } : n))
     );
-
     setIsElectionInProgress(true);
     addLog(`⏱️ Heartbeat Timeout detected! Starting Raft election for Term ${term + 1}...`);
 
@@ -316,12 +284,10 @@ export default function App() {
           setIsElectionInProgress(false);
           return currentNodes;
         }
-
         const newLeader = eligibleFollowers[0];
         addLog(`🗳️ Raft Election Complete: ${newLeader.id} received majority votes! Promoted to LEADER.`);
         setTerm((t) => t + 1);
         setIsElectionInProgress(false);
-
         return currentNodes.map((n) => {
           if (n.id === newLeader.id) return { ...n, role: 'Leader', health: 100 };
           if (n.status === 'Active') return { ...n, role: 'Follower' };
@@ -331,7 +297,6 @@ export default function App() {
     }, 2200);
   };
 
-  // Recover Nodes
   const handleRecoverNodes = () => {
     addLog('🔄 Node recovery routine triggered. Rebooting all offline nodes...');
     setNodes((prev) =>
@@ -346,7 +311,6 @@ export default function App() {
     addLog('✅ All cluster nodes online and synchronized with Raft log.');
   };
 
-  // Toggle Single Node
   const toggleNodeState = (nodeId) => {
     setNodes((prev) =>
       prev.map((n) => {
@@ -366,46 +330,32 @@ export default function App() {
     );
   };
 
-  // KV Store: Set Key
+  // KV Store
   const handleKvSet = (e) => {
     e.preventDefault();
     if (!newKey.trim() || !newValue.trim()) return;
     const cleanKey = newKey.trim();
     const cleanVal = newValue.trim();
-
     const leader = nodes.find((n) => n.role === 'Leader' && n.status === 'Active');
     const leaderName = leader ? leader.id : 'NodeA';
-
     setKvStore((prev) => {
       const existing = prev.filter((item) => item.key !== cleanKey);
       return [{ key: cleanKey, value: cleanVal, term: term, node: leaderName }, ...existing];
     });
-
     addLog(`🔑 KV-Store: Replicated SET "${cleanKey}"="${cleanVal}" across cluster (Term ${term})`);
     setNewKey('');
     setNewValue('');
   };
 
-  // Delete KV
   const handleKvDelete = (keyToDelete) => {
     setKvStore((prev) => prev.filter((item) => item.key !== keyToDelete));
     addLog(`🗑️ KV-Store: DEL key "${keyToDelete}" acknowledged by quorum`);
   };
 
-  // Save edited file
-  const handleSaveFileEdit = () => {
-    if (!selectedFile) return;
-    setFiles((prev) =>
-      prev.map((f) => (f.name === selectedFile.name ? { ...f, content: fileEditContent, size: `${fileEditContent.length} B` } : f))
-    );
-    addLog(`💾 VFS: Saved updates to "${selectedFile.name}"`);
-  };
-
-  // FULL LINUX TERMINAL COMMAND PARSER
+  // Terminal commands
   const handleCliSubmit = (e) => {
     e?.preventDefault();
     if (!cliInput.trim()) return;
-
     const rawInput = cliInput.trim();
     const args = rawInput.split(' ').filter(Boolean);
     const cmd = args[0].toLowerCase();
@@ -413,130 +363,52 @@ export default function App() {
     let response = [];
 
     switch (cmd) {
-      // 1. pwd
       case 'pwd':
         response = [{ type: 'info', text: currentDir }];
         break;
-
-      // 2. cd
       case 'cd':
         const targetDir = args[1] || '/root';
         if (targetDir === '..' || targetDir === '../') {
           setCurrentDir('/');
-          response = [{ type: 'info', text: '' }];
         } else if (targetDir === '/' || targetDir === '/root' || targetDir === '/bin' || targetDir === '/etc') {
           setCurrentDir(targetDir);
-          response = [{ type: 'info', text: '' }];
-        } else if (targetDir === 'bin' || targetDir === 'etc' || targetDir === 'root') {
-          setCurrentDir(`/${targetDir}`);
-          response = [{ type: 'info', text: '' }];
         } else {
-          response = [{ type: 'error', text: `bash: cd: ${targetDir}: No such file or directory` }];
+          setCurrentDir(`/${targetDir.replace(/^\//, '')}`);
         }
+        response = [{ type: 'info', text: '' }];
         break;
-
-      // 3. whoami
       case 'whoami':
         response = [{ type: 'info', text: 'root (uid=0, gid=0, groups=0(root),1(bin),2(daemon))' }];
         break;
-
-      // 4. uname
       case 'uname':
-        if (args.includes('-a')) {
-          response = [{ type: 'info', text: 'Linux distributed-os 1.0.4-x86_32 #1 SMP Mon Nov 26 15:45:00 UTC 2026 i686 GNU/Linux' }];
-        } else if (args.includes('-r')) {
-          response = [{ type: 'info', text: '1.0.4-x86_32' }];
-        } else {
-          response = [{ type: 'info', text: 'Linux' }];
-        }
+        response = [{ type: 'info', text: 'Linux distributed-os 1.0.4-x86_32 #1 SMP Mon Nov 26 15:45:00 UTC 2026 i686 GNU/Linux' }];
         break;
-
-      // 5. date
       case 'date':
         response = [{ type: 'info', text: new Date().toUTCString() }];
         break;
-
-      // 6. uptime
       case 'uptime':
-        response = [{ type: 'info', text: ' 15:45:22 up 4:18,  1 user,  load average: 0.14, 0.22, 0.18' }];
+        response = [{ type: 'info', text: ' 16:05:12 up 4:22,  1 user,  load average: 0.14, 0.22, 0.18' }];
         break;
-
-      // 7. echo
       case 'echo':
-        const echoText = rawInput.substring(5).trim();
-        if (echoText.includes('>')) {
-          const parts = echoText.split('>');
-          const content = parts[0].trim().replace(/^["']|["']$/g, '');
-          const filename = parts[1].trim();
-          const newF = { name: filename, type: 'file', size: `${content.length} B`, permissions: '-rw-r--r--', path: `${currentDir}/${filename}`, content };
-          setFiles((prev) => [...prev.filter((f) => f.name !== filename), newF]);
-          response = [{ type: 'success', text: `Wrote ${content.length} bytes to ${filename}` }];
-        } else {
-          response = [{ type: 'info', text: echoText.replace(/^["']|["']$/g, '') }];
-        }
+        response = [{ type: 'info', text: rawInput.substring(5).trim().replace(/^["']|["']$/g, '') }];
         break;
-
-      // 8. ls
       case 'ls':
         response = [
           { type: 'info', text: 'total 48' },
           ...files.map((f) => ({
             type: 'info',
-            text: `${f.permissions}  1 root root ${f.size.padStart(7)} Nov 26 15:40 ${f.type === 'folder' ? f.name : f.name}`
+            text: `${f.permissions}  1 root root ${f.size.padStart(7)} Nov 26 16:00 ${f.name}`
           }))
         ];
         break;
-
-      // 9. cat
       case 'cat':
         if (!args[1]) {
           response = [{ type: 'error', text: 'cat: missing operand' }];
         } else {
           const target = files.find((f) => f.name.toLowerCase() === args[1].toLowerCase());
-          if (target) {
-            response = [{ type: 'info', text: target.content }];
-          } else {
-            response = [{ type: 'error', text: `cat: ${args[1]}: No such file or directory` }];
-          }
+          response = target ? [{ type: 'info', text: target.content }] : [{ type: 'error', text: `cat: ${args[1]}: No such file or directory` }];
         }
         break;
-
-      // 10. touch
-      case 'touch':
-        if (!args[1]) {
-          response = [{ type: 'error', text: 'touch: missing file operand' }];
-        } else {
-          const fname = args[1];
-          const newFile = { name: fname, type: 'file', size: '0 B', permissions: '-rw-r--r--', path: `${currentDir}/${fname}`, content: '' };
-          setFiles((prev) => [...prev.filter((f) => f.name !== fname), newFile]);
-          response = [{ type: 'success', text: `File "${fname}" touched successfully.` }];
-        }
-        break;
-
-      // 11. rm
-      case 'rm':
-        if (!args[1]) {
-          response = [{ type: 'error', text: 'rm: missing operand' }];
-        } else {
-          const fname = args[1];
-          setFiles((prev) => prev.filter((f) => f.name !== fname));
-          response = [{ type: 'info', text: `Removed "${fname}"` }];
-        }
-        break;
-
-      // 12. mkdir
-      case 'mkdir':
-        if (!args[1]) {
-          response = [{ type: 'error', text: 'mkdir: missing operand' }];
-        } else {
-          const dname = args[1].endsWith('/') ? args[1] : `${args[1]}/`;
-          const newDir = { name: dname, type: 'folder', size: '--', permissions: 'drwxr-xr-x', path: `${currentDir}/${dname}`, content: '' };
-          setFiles((prev) => [...prev, newDir]);
-          response = [{ type: 'success', text: `Directory "${dname}" created in ${currentDir}` }];
-        }
-        break;
-
-      // 13. ps
       case 'ps':
         response = [
           { type: 'info', text: '  PID TTY          TIME CMD' },
@@ -544,205 +416,43 @@ export default function App() {
           { type: 'info', text: '    1 ?        00:00:01 /sbin/init' },
           { type: 'info', text: '    2 ?        00:00:02 [raft_consensus]' },
           { type: 'info', text: '    3 ?        00:00:01 /bin/rpc_server --port 8080' },
-          { type: 'info', text: '   42 tty1     00:00:00 /bin/bash' },
-          { type: 'info', text: '  108 tty1     00:00:00 ps' }
+          { type: 'info', text: '   42 tty1     00:00:00 /bin/bash' }
         ];
         break;
-
-      // 14. df
       case 'df':
         response = [
           { type: 'info', text: 'Filesystem     1K-blocks     Used Available Use% Mounted on' },
-          { type: 'info', text: '/dev/ata0p1       524288    34816    489472   7% /' },
-          { type: 'info', text: 'tmpfs             131072     4096    126976   4% /dev/shm' },
-          { type: 'info', text: '/dev/vfs0         262144     1024    261120   1% /mnt/distributed' }
+          { type: 'info', text: '/dev/ata0p1       524288    34816    489472   7% /' }
         ];
         break;
-
-      // 15. free
       case 'free':
         response = [
           { type: 'info', text: '               total        used        free      shared  buff/cache   available' },
-          { type: 'info', text: 'Mem:            4096         256        3584          16         256        3824' },
-          { type: 'info', text: 'Swap:           1024           0        1024' }
+          { type: 'info', text: 'Mem:            4096         256        3584          16         256        3824' }
         ];
         break;
-
-      // 16. ifconfig / ip
-      case 'ifconfig':
-      case 'ip':
-        response = [
-          { type: 'info', text: 'eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500' },
-          { type: 'info', text: '        inet 192.168.1.101  netmask 255.255.255.0  broadcast 192.168.1.255' },
-          { type: 'info', text: '        ether 52:54:00:12:34:56  txqueuelen 1000  (Ethernet)' },
-          { type: 'info', text: '        RX packets 18420  bytes 14210920 (14.2 MB)' },
-          { type: 'info', text: '        TX packets 17290  bytes 12914021 (12.9 MB)' },
-          { type: 'info', text: 'lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536' },
-          { type: 'info', text: '        inet 127.0.0.1  netmask 255.0.0.0' }
-        ];
-        break;
-
-      // 17. ping
       case 'ping':
         const host = args[1] || 'NodeB';
         response = [
           { type: 'info', text: `PING ${host} (192.168.1.102) 56(84) bytes of data.` },
-          { type: 'success', text: `64 bytes from 192.168.1.102: icmp_seq=1 ttl=64 time=0.342 ms` },
-          { type: 'success', text: `64 bytes from 192.168.1.102: icmp_seq=2 ttl=64 time=0.298 ms` },
-          { type: 'success', text: `64 bytes from 192.168.1.102: icmp_seq=3 ttl=64 time=0.315 ms` },
-          { type: 'info', text: `--- ${host} ping statistics ---` },
-          { type: 'info', text: `3 packets transmitted, 3 received, 0% packet loss, rtt avg 0.318 ms` }
+          { type: 'success', text: `64 bytes from 192.168.1.102: icmp_seq=1 ttl=64 time=0.298 ms` },
+          { type: 'info', text: `3 packets transmitted, 3 received, 0% packet loss` }
         ];
         break;
-
-      // 18. top / htop
-      case 'top':
-      case 'htop':
-        response = [
-          { type: 'info', text: 'top - 15:45:30 up 4:18,  1 user,  load average: 0.14, 0.22, 0.18' },
-          { type: 'info', text: 'Tasks: 6 total,   1 running,   5 sleeping,   0 stopped,   0 zombie' },
-          { type: 'info', text: '%Cpu(s):  4.2 us,  2.1 sy,  0.0 ni, 93.7 id,  0.0 wa,  0.0 hi,  0.0 si' },
-          { type: 'info', text: 'MiB Mem :   4096.0 total,   3584.0 free,    256.0 used,    256.0 buff/cache' },
-          { type: 'info', text: '  PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND' },
-          { type: 'success', text: '    2 root      20   0  142100   8420   3120 S   2.8   0.2   0:04.12 raft_engine' },
-          { type: 'info', text: '    3 root      20   0   98200   6140   2840 S   1.4   0.1   0:01.84 rpc_listener' },
-          { type: 'info', text: '    1 root      20   0   42100   3120   1840 S   0.0   0.1   0:00.82 init' }
-        ];
-        break;
-
-      // 19. python / python3
-      case 'python':
-      case 'python3':
-        if (args[1] === '-c') {
-          const pyCode = rawInput.substring(rawInput.indexOf('-c') + 2).trim().replace(/^["']|["']$/g, '');
-          if (pyCode.includes('print')) {
-            const printContent = pyCode.replace(/print\((.*)\)/, '$1').replace(/^["']|["']$/g, '');
-            response = [{ type: 'success', text: printContent }];
-          } else {
-            response = [{ type: 'info', text: `[Python 3.12 executed successfully: ${pyCode}]` }];
-          }
-        } else if (args[1] === 'main.py') {
-          response = [
-            { type: 'info', text: 'Executing cluster task 1 on distributed core...' },
-            { type: 'info', text: 'Executing cluster task 2 on distributed core...' },
-            { type: 'info', text: 'Executing cluster task 3 on distributed core...' },
-            { type: 'info', text: 'Executing cluster task 4 on distributed core...' },
-            { type: 'info', text: 'Executing cluster task 5 on distributed core...' },
-            { type: 'success', text: 'All 5 tasks completed successfully!' }
-          ];
-        } else {
-          response = [
-            { type: 'info', text: 'Python 3.12.2 (main, Nov 26 2026) on DistributedOS x86' },
-            { type: 'info', text: 'Type "help", "copyright", "credits" or "license" for more information.' },
-            { type: 'success', text: '>>> Tip: Use the "Code Runner" tab in the left sidebar to write and run full Python scripts!' }
-          ];
-        }
-        break;
-
-      // 20. node / js
-      case 'node':
-      case 'js':
-        if (args[1] === '-e') {
-          const jsExpr = rawInput.substring(rawInput.indexOf('-e') + 2).trim().replace(/^["']|["']$/g, '');
-          try {
-            const res = Function(`"use strict"; return (${jsExpr})`)();
-            response = [{ type: 'success', text: String(res) }];
-          } catch (e) {
-            response = [{ type: 'error', text: `ReferenceError: ${e.message}` }];
-          }
-        } else {
-          response = [
-            { type: 'info', text: 'Welcome to Node.js v20.11.0 on DistributedOS.' },
-            { type: 'info', text: 'Type ".help" for more information.' }
-          ];
-        }
-        break;
-
-      // 21. gcc
-      case 'gcc':
-        response = [
-          { type: 'info', text: `gcc (GCC) 13.2.0 for i686-pc-distributed-os` },
-          { type: 'success', text: `Compiled server.c -> generated executable binary a.out (ELF 32-bit x86)` }
-        ];
-        break;
-
-      // 22. go
-      case 'go':
-        response = [
-          { type: 'info', text: 'go version go1.22.1 distributed/386' },
-          { type: 'success', text: 'Distributed cluster packages compiled and verified.' }
-        ];
-        break;
-
-      // 23. dmesg
-      case 'dmesg':
-        response = [
-          { type: 'info', text: '[    0.000000] Linux version 1.0.4-x86_32 (root@build-server) (gcc 13.2.0) #1 SMP' },
-          { type: 'info', text: '[    0.000004] BIOS-provided physical RAM map: 4096MB at 0x00000000' },
-          { type: 'info', text: '[    0.000018] x86: Booting SMP configuration' },
-          { type: 'info', text: '[    0.000032] Initializing CPU#0 (x86 GenuineIntel)' },
-          { type: 'info', text: '[    0.000104] IDT and ISR vectors installed: 0-31 CPU exceptions, 32-47 PIC IRQs' },
-          { type: 'info', text: '[    0.000212] Virtual memory enabled: 4KB pages, Page Directory at 0x9C000' },
-          { type: 'info', text: '[    0.000450] Preemptive scheduler online: PIT timer set to 100Hz quantum' },
-          { type: 'success', text: '[    0.000890] Raft Consensus Daemon online. Quorum reached with majority.' }
-        ];
-        break;
-
-      // 24. status
-      case 'status':
-        const activeCount = nodes.filter((n) => n.status === 'Active').length;
-        const currentLeader = nodes.find((n) => n.role === 'Leader' && n.status === 'Active');
-        response = [
-          { type: 'success', text: `Cluster State: STABLE | Active Nodes: ${activeCount}/${nodes.length} | Raft Term: ${term}` },
-          { type: 'success', text: `Current Leader: ${currentLeader ? currentLeader.id : 'NONE (Election Required)'} | Tasks Processed: ${tasksCount}` }
-        ];
-        break;
-
-      // 25. task / failover / recover / meminfo / clear / help
-      case 'task':
-        handleDispatchTask();
-        response = [{ type: 'success', text: `Task #${tasksCount + 1} queued and dispatched to cluster!` }];
-        break;
-
-      case 'failover':
-        handleKillLeader();
-        response = [{ type: 'error', text: 'Leader killed! Triggering automated Raft election...' }];
-        break;
-
-      case 'recover':
-        handleRecoverNodes();
-        response = [{ type: 'success', text: 'All nodes recovered and back online.' }];
-        break;
-
-      case 'meminfo':
-        response = [
-          { type: 'info', text: 'Virtual Memory (4KB Paging Architecture):' },
-          { type: 'info', text: '  Page Directory: 0x0009C000 (1024 Entries)' },
-          { type: 'info', text: '  Identity Mapped: 0x00000000 - 0x00400000 (4MB Kernel Space)' },
-          { type: 'info', text: '  Kernel Heap: 256 KB used / 4096 KB total' },
-          { type: 'info', text: '  Paging Status: ENABLED (CR0 bit 31 set)' }
-        ];
-        break;
-
       case 'clear':
         setCliHistory([]);
         setCliInput('');
         return;
-
       case 'help':
         response = [
           { type: 'info', text: '=== DistributedOS Standard Linux Commands ===' },
-          { type: 'info', text: '  pwd, cd, ls, cat, touch, rm, mkdir, echo' },
-          { type: 'info', text: '  whoami, uname -a, date, uptime, dmesg' },
-          { type: 'info', text: '  ps, top, ifconfig, ping, df -h, free -m' },
-          { type: 'info', text: '  python, python main.py, node -e, gcc, go' },
-          { type: 'info', text: '=== Distributed Cluster Commands ===' },
-          { type: 'info', text: '  status, task, failover, recover, meminfo, clear' }
+          { type: 'info', text: '  pwd, cd, ls, cat, echo, whoami, uname -a, date, uptime' },
+          { type: 'info', text: '  ps, df -h, free -m, ping, clear' },
+          { type: 'success', text: '💡 Universal Code Runner: Open the "Universal Code Runner" tab to write and run 30+ real programming languages!' }
         ];
         break;
-
       default:
-        response = [{ type: 'error', text: `bash: ${cmd}: command not found. Type "help" to see all available commands.` }];
+        response = [{ type: 'error', text: `bash: ${cmd}: command not found. Type "help" for a list of commands.` }];
         break;
     }
 
@@ -753,6 +463,28 @@ export default function App() {
   const currentLeader = nodes.find((n) => n.role === 'Leader' && n.status === 'Active');
   const activeCount = nodes.filter((n) => n.status === 'Active').length;
 
+  // Filter languages for dropdown/modal
+  const filteredLanguages = availableLanguages.filter((l) => {
+    const matchesCat = langCategoryFilter === 'All' || l.category === langCategoryFilter;
+    const matchesSearch =
+      !langSearchQuery ||
+      l.name.toLowerCase().includes(langSearchQuery.toLowerCase()) ||
+      l.id.toLowerCase().includes(langSearchQuery.toLowerCase()) ||
+      (l.extensions && l.extensions.some((ext) => ext.toLowerCase().includes(langSearchQuery.toLowerCase())));
+    return matchesCat && matchesSearch;
+  });
+
+  const categories = [
+    'All',
+    'General-purpose',
+    'Web development',
+    'Shell and scripting',
+    'Database and query languages',
+    'Scientific and numerical computing',
+    'Hardware and low-level languages',
+    'Configuration and data formats'
+  ];
+
   return (
     <div className="app-container">
       {/* SIDEBAR NAVIGATION */}
@@ -761,16 +493,16 @@ export default function App() {
           <div className="logo-icon"></div>
           <div className="logo-text">
             <span>DistributedOS</span>
-            <small>Kernel & Raft v1.0</small>
+            <small>Universal Runtime Platform</small>
           </div>
         </div>
 
         <nav className="nav-menu">
           {[
             { id: 'Dashboard', icon: '📊', label: 'Cluster Overview' },
+            { id: 'UniversalRunner', icon: '⚡', label: 'Universal Code Runner' },
             { id: 'Topology', icon: '🌐', label: 'Network Topology Graph' },
             { id: 'Terminal', icon: '💻', label: 'Interactive Terminal' },
-            { id: 'CodeRunner', icon: '⚡', label: 'Code Runner (All Langs)' },
             { id: 'KVStore', icon: '🔑', label: 'Distributed KV Store' },
             { id: 'File Explorer', icon: '📁', label: 'VFS File Explorer' },
             { id: 'Settings', icon: '⚙️', label: 'System Architecture' }
@@ -792,8 +524,8 @@ export default function App() {
             <span>{isElectionInProgress ? 'Election in Progress' : 'Cluster Quorum Active'}</span>
           </div>
           <div className="footer-stats">
+            <div>Runtimes: <strong>{availableLanguages.filter((l) => l.installed).length} Active</strong></div>
             <div>Term: <strong>{term}</strong></div>
-            <div>Tasks: <strong>{tasksCount}</strong></div>
           </div>
         </div>
       </aside>
@@ -815,11 +547,11 @@ export default function App() {
               </div>
             </div>
 
-            {/* QUICK INTERACTIVE CONTROL BAR */}
+            {/* QUICK CONTROL BAR */}
             <div className="control-banner">
               <div className="control-banner-title">
                 <span>⚡ Interactive Cluster Controls</span>
-                <small>Click any action to simulate real distributed system events</small>
+                <small>Simulate real distributed cluster operations</small>
               </div>
               <div className="control-btn-group">
                 <button className="btn btn-primary" onClick={handleDispatchTask}>
@@ -834,7 +566,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* SUMMARY STATS BAR */}
+            {/* METRICS STRIP */}
             <div className="metrics-strip">
               <div className="stat-card">
                 <span className="stat-label">CLUSTER LEADER</span>
@@ -847,9 +579,9 @@ export default function App() {
                 <span className="stat-sub">{activeCount >= 2 ? 'Majority Consensus Met' : 'Quorum Lost!'}</span>
               </div>
               <div className="stat-card">
-                <span className="stat-label">CONSENSUS TERM</span>
-                <span className="stat-value">Term #{term}</span>
-                <span className="stat-sub">Raft Epoch Counter</span>
+                <span className="stat-label">ACTIVE RUNTIMES</span>
+                <span className="stat-value">{availableLanguages.filter((l) => l.installed).length} Compilers</span>
+                <span className="stat-sub">From 33 Dynamic Specs</span>
               </div>
               <div className="stat-card">
                 <span className="stat-label">PROCESSED TASKS</span>
@@ -911,7 +643,7 @@ export default function App() {
               ))}
             </div>
 
-            {/* LIVE ACTIVITY LOG */}
+            {/* LOG */}
             <div className="section-header-row">
               <h2 className="section-title">Live Cluster Activity Log</h2>
               <button className="btn-link" onClick={() => setLogs([])}>Clear Log</button>
@@ -927,7 +659,287 @@ export default function App() {
           </>
         )}
 
-        {/* TAB 2: NETWORK TOPOLOGY GRAPH */}
+        {/* TAB 2: UNIVERSAL MULTI-LANGUAGE CODE RUNNER */}
+        {activeTab === 'UniversalRunner' && (
+          <div className="universal-runner-container">
+            {/* TOP BAR: DYNAMIC LANGUAGE SELECTOR & ACTIONS */}
+            <div className="runner-header-bar">
+              <div className="runner-title-group">
+                <h1>Universal Code Runner</h1>
+                <p className="subtitle">Real multi-language execution engine powered by host compilers and interpreters</p>
+              </div>
+
+              <div className="runner-action-buttons">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowStdin(!showStdin)}
+                >
+                  {showStdin ? 'Hide Stdin' : '📥 Stdin Input'}
+                </button>
+                <button className="btn btn-secondary" onClick={handleDownloadCode}>
+                  💾 Download
+                </button>
+                <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>
+                  📂 Upload File
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleUploadFile}
+                />
+                <button
+                  className="btn btn-primary btn-run-pulse"
+                  onClick={handleExecute}
+                  disabled={isExecuting}
+                >
+                  {isExecuting ? '⚡ Running...' : '▶ Run Code'}
+                </button>
+              </div>
+            </div>
+
+            {/* DYNAMIC REGISTRY SELECTOR TOOLBAR */}
+            <div className="registry-toolbar">
+              {/* Language Search */}
+              <div className="search-box">
+                <span className="search-icon">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Search 33+ programming languages..."
+                  value={langSearchQuery}
+                  onChange={(e) => setLangSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+
+              {/* Category Pills */}
+              <div className="category-scroll-pills">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    className={`cat-pill ${langCategoryFilter === cat ? 'active' : ''}`}
+                    onClick={() => setLangCategoryFilter(cat)}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* LANGUAGE CHIPS CAROUSEL */}
+            <div className="languages-chips-grid">
+              {isRegistryLoading ? (
+                <div className="loading-state">Loading dynamic runtime registry from /api/languages...</div>
+              ) : filteredLanguages.length === 0 ? (
+                <div className="empty-state">No languages found matching "{langSearchQuery}"</div>
+              ) : (
+                filteredLanguages.map((lang) => {
+                  const isSelected = selectedLanguage?.id === lang.id;
+                  return (
+                    <div
+                      key={lang.id}
+                      className={`lang-card-pill ${isSelected ? 'selected' : ''} ${lang.installed ? 'installed' : 'uninstalled'}`}
+                      onClick={() => selectLanguage(lang)}
+                    >
+                      <div className="lang-pill-header">
+                        <span className="lang-name">{lang.name}</span>
+                        <span className={`status-badge-small ${lang.installed ? 'badge-green' : 'badge-gray'}`}>
+                          {lang.installed ? '✓ Ready' : 'Not installed'}
+                        </span>
+                      </div>
+                      <div className="lang-compiler-info">
+                        <small>{lang.compiler}</small>
+                        {lang.runtimeVersion && (
+                          <div className="runtime-ver">{lang.runtimeVersion.substring(0, 32)}</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* SELECTED LANGUAGE STATUS BANNER */}
+            {selectedLanguage && (
+              <div className={`selected-lang-banner ${selectedLanguage.installed ? 'banner-installed' : 'banner-warning'}`}>
+                <div className="banner-details">
+                  <strong>{selectedLanguage.name} Runtime Environment</strong>
+                  <span>
+                    Compiler: <code>{selectedLanguage.compiler}</code> | Category: {selectedLanguage.category} | File Extensions: {selectedLanguage.extensions.join(', ')}
+                  </span>
+                </div>
+                <div className="banner-status-tag">
+                  {selectedLanguage.installed ? (
+                    <span className="status-tag-green">● {selectedLanguage.availability} ({selectedLanguage.runtimeVersion})</span>
+                  ) : (
+                    <span className="status-tag-red">⚠️ Runtime not installed: Execution disabled until compiler is installed</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* MULTI-FILE CODE EDITOR & CONSOLE SPLIT */}
+            <div className="editor-console-workspace">
+              {/* LEFT: CODE EDITOR WITH FILE TABS */}
+              <div className="editor-pane">
+                {/* File Tabs */}
+                <div className="file-tabs-bar">
+                  <div className="tabs-list">
+                    {editorFiles.map((file, idx) => (
+                      <div
+                        key={idx}
+                        className={`editor-tab ${activeFileIndex === idx ? 'active' : ''}`}
+                        onClick={() => setActiveFileIndex(idx)}
+                      >
+                        <span className="tab-name">{file.name}</span>
+                        {editorFiles.length > 1 && (
+                          <span
+                            className="tab-close"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const newFiles = editorFiles.filter((_, i) => i !== idx);
+                              setEditorFiles(newFiles);
+                              setActiveFileIndex(Math.max(0, idx - 1));
+                            }}
+                          >
+                            ×
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      className="tab-add-btn"
+                      onClick={() => {
+                        const newName = `file_${editorFiles.length + 1}${selectedLanguage?.extensions[0] || '.txt'}`;
+                        setEditorFiles([...editorFiles, { name: newName, content: '' }]);
+                        setActiveFileIndex(editorFiles.length);
+                      }}
+                    >
+                      + Add File
+                    </button>
+                  </div>
+                  <button
+                    className="btn-link"
+                    onClick={() => {
+                      if (selectedLanguage) {
+                        const updated = [...editorFiles];
+                        updated[activeFileIndex].content = selectedLanguage.starterCode || '';
+                        setEditorFiles(updated);
+                      }
+                    }}
+                  >
+                    Reset Template
+                  </button>
+                </div>
+
+                {/* Stdin Drawer */}
+                {showStdin && (
+                  <div className="stdin-drawer">
+                    <div className="stdin-header">
+                      <span>Standard Input (stdin stream passed to program):</span>
+                    </div>
+                    <textarea
+                      className="stdin-textarea"
+                      placeholder="Enter lines of input here (for scanf, input(), Scanner, etc.)..."
+                      value={stdinInput}
+                      onChange={(e) => setStdinInput(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {/* Main Code Editor */}
+                <textarea
+                  className="code-editor-main"
+                  value={editorFiles[activeFileIndex]?.content || ''}
+                  onChange={(e) => {
+                    const updated = [...editorFiles];
+                    updated[activeFileIndex].content = e.target.value;
+                    setEditorFiles(updated);
+                  }}
+                  placeholder="Type or paste code here..."
+                  spellCheck="false"
+                />
+              </div>
+
+              {/* RIGHT: EXECUTION CONSOLE & DIAGNOSTICS */}
+              <div className="console-pane">
+                <div className="console-tabs-bar">
+                  <div className="console-tab-buttons">
+                    <button
+                      className={`console-tab-btn ${resultTab === 'stdout' ? 'active' : ''}`}
+                      onClick={() => setResultTab('stdout')}
+                    >
+                      Standard Output
+                    </button>
+                    {executionResult?.compileOutput && (
+                      <button
+                        className={`console-tab-btn ${resultTab === 'compile' ? 'active' : ''}`}
+                        onClick={() => setResultTab('compile')}
+                      >
+                        Compiler Diagnostics
+                      </button>
+                    )}
+                    {selectedLanguage?.capabilities?.preview && (
+                      <button
+                        className={`console-tab-btn ${resultTab === 'preview' ? 'active' : ''}`}
+                        onClick={() => setResultTab('preview')}
+                      >
+                        Live Browser Preview
+                      </button>
+                    )}
+                  </div>
+
+                  {executionResult && (
+                    <div className="console-metrics">
+                      <span className={`exit-badge ${executionResult.success ? 'exit-success' : 'exit-fail'}`}>
+                        Exit Code: {executionResult.exitCode}
+                      </span>
+                      {executionResult.executionTimeMs > 0 && (
+                        <span className="time-badge">{executionResult.executionTimeMs.toFixed(1)} ms</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="console-content">
+                  {isExecuting ? (
+                    <div className="running-spinner">
+                      <div className="spinner-ring"></div>
+                      <span>Compiling and executing through {selectedLanguage?.name} runtime adapter...</span>
+                    </div>
+                  ) : resultTab === 'preview' && selectedLanguage?.capabilities?.preview ? (
+                    <iframe
+                      title="Web Preview Sandbox"
+                      className="preview-iframe"
+                      srcDoc={editorFiles[activeFileIndex]?.content || ''}
+                      sandbox="allow-scripts allow-modals"
+                    />
+                  ) : resultTab === 'compile' && executionResult?.compileOutput ? (
+                    <pre className="output-stream compile-stream">
+                      {executionResult.compileOutput}
+                    </pre>
+                  ) : executionResult ? (
+                    <pre className="output-stream">
+                      {executionResult.stdout && (
+                        <div className="stream-stdout">{executionResult.stdout}</div>
+                      )}
+                      {executionResult.stderr && (
+                        <div className="stream-stderr">{executionResult.stderr}</div>
+                      )}
+                    </pre>
+                  ) : (
+                    <div className="console-empty-prompt">
+                      <span>Click <strong>"▶ Run Code"</strong> to compile and execute with host runtime.</span>
+                      <small>Output, execution duration, and exit codes will stream here in real time.</small>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: NETWORK TOPOLOGY GRAPH */}
         {activeTab === 'Topology' && (
           <div className="topology-page">
             <div className="header">
@@ -944,15 +956,6 @@ export default function App() {
 
             <div className="topology-canvas-container">
               <svg className="topology-svg" viewBox="0 0 620 440">
-                {/* Connection lines between all nodes */}
-                <defs>
-                  <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.8" />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.4" />
-                  </linearGradient>
-                </defs>
-
-                {/* Mesh lines */}
                 <line x1="200" y1="120" x2="420" y2="120" stroke="var(--border)" strokeWidth="2" strokeDasharray="4 4" />
                 <line x1="420" y1="120" x2="420" y2="320" stroke="var(--border)" strokeWidth="2" strokeDasharray="4 4" />
                 <line x1="420" y1="320" x2="200" y2="320" stroke="var(--border)" strokeWidth="2" strokeDasharray="4 4" />
@@ -960,7 +963,6 @@ export default function App() {
                 <line x1="200" y1="120" x2="420" y2="320" stroke="var(--border)" strokeWidth="1" strokeDasharray="2 2" opacity="0.5" />
                 <line x1="420" y1="120" x2="200" y2="320" stroke="var(--border)" strokeWidth="1" strokeDasharray="2 2" opacity="0.5" />
 
-                {/* Animated traveling packet dots */}
                 {packetDots.map((dot) => (
                   <circle key={dot.id} cx={dot.fromX} cy={dot.fromY} r="5" fill="#34d399">
                     <animate attributeName="cx" from={dot.fromX} to={dot.toX} dur="1.2s" fill="freeze" />
@@ -969,13 +971,11 @@ export default function App() {
                   </circle>
                 ))}
 
-                {/* Render Nodes */}
                 {nodes.map((node) => {
                   const isLeader = node.role === 'Leader';
                   const isDead = node.status === 'Offline';
                   return (
                     <g key={node.id} transform={`translate(${node.x}, ${node.y})`} className="node-graph-group" onClick={() => toggleNodeState(node.id)}>
-                      {/* Halo */}
                       {isLeader && <circle r="46" fill="rgba(16, 185, 129, 0.15)" className="pulse-circle" />}
                       <circle
                         r="34"
@@ -1004,7 +1004,7 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 3: FULL LINUX TERMINAL */}
+        {/* TAB 4: LINUX TERMINAL */}
         {activeTab === 'Terminal' && (
           <div className="terminal-page">
             <div className="header">
@@ -1015,16 +1015,13 @@ export default function App() {
               <button className="btn btn-secondary" onClick={() => setCliHistory([])}>Clear Terminal</button>
             </div>
 
-            {/* QUICK COMMAND CHIPS */}
             <div className="command-chips">
-              <span className="chips-label">Try commands:</span>
-              {['pwd', 'ls', 'whoami', 'uname -a', 'date', 'uptime', 'ps', 'top', 'df -h', 'free -m', 'ifconfig', 'ping NodeB', 'cat secret.txt', 'python main.py', 'dmesg', 'help'].map((cmd) => (
+              <span className="chips-label">Quick Linux Commands:</span>
+              {['pwd', 'ls', 'whoami', 'uname -a', 'date', 'uptime', 'ps', 'df -h', 'free -m', 'ping NodeB', 'cat secret.txt', 'help'].map((cmd) => (
                 <button
                   key={cmd}
                   className="chip-btn"
-                  onClick={() => {
-                    setCliInput(cmd);
-                  }}
+                  onClick={() => setCliInput(cmd)}
                 >
                   {cmd}
                 </button>
@@ -1054,75 +1051,11 @@ export default function App() {
                   className="terminal-input"
                   value={cliInput}
                   onChange={(e) => setCliInput(e.target.value)}
-                  placeholder="Type any Linux command (e.g. 'pwd', 'ls', 'uname -a', 'ps', 'top', 'python main.py')..."
+                  placeholder="Type any command (e.g. 'pwd', 'ls', 'whoami', 'uname -a')..."
                   autoFocus
                 />
                 <button type="submit" className="btn btn-small btn-primary">Run</button>
               </form>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: MULTI-LANGUAGE CODE RUNNER */}
-        {activeTab === 'CodeRunner' && (
-          <div className="coderunner-page">
-            <div className="header">
-              <div>
-                <h1>Multi-Language Code Runner & Playground</h1>
-                <p className="subtitle">Write and execute programs live in Python, JavaScript, C, and Go on the DistributedOS runtime</p>
-              </div>
-              <button
-                className="btn btn-primary"
-                onClick={handleExecuteCode}
-                disabled={isCodeRunning}
-              >
-                {isCodeRunning ? '⚡ Running...' : '▶ Run Code'}
-              </button>
-            </div>
-
-            {/* LANGUAGE SELECTOR TABS */}
-            <div className="lang-tabs-row">
-              {[
-                { id: 'python', label: '🐍 Python 3.12' },
-                { id: 'javascript', label: '🟨 JavaScript (Node)' },
-                { id: 'c', label: '⚙️ C (GCC x86)' },
-                { id: 'go', label: '🔷 Go (Raft Engine)' }
-              ].map((lang) => (
-                <button
-                  key={lang.id}
-                  className={`lang-tab ${codeLanguage === lang.id ? 'lang-tab-active' : ''}`}
-                  onClick={() => handleLanguageChange(lang.id)}
-                >
-                  {lang.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="coderunner-split">
-              {/* Code Editor */}
-              <div className="code-editor-pane">
-                <div className="pane-bar">
-                  <span>Source Code Editor ({codeLanguage.toUpperCase()})</span>
-                  <button className="btn-link" onClick={() => setCodeSource(CODE_TEMPLATES[codeLanguage])}>Reset Template</button>
-                </div>
-                <textarea
-                  className="code-textarea"
-                  value={codeSource}
-                  onChange={(e) => setCodeSource(e.target.value)}
-                  spellCheck="false"
-                />
-              </div>
-
-              {/* Execution Console */}
-              <div className="code-output-pane">
-                <div className="pane-bar">
-                  <span>Standard Output (stdout / stderr)</span>
-                  <button className="btn-link" onClick={() => setCodeOutput('')}>Clear</button>
-                </div>
-                <pre className="output-terminal">
-                  {codeOutput || '// Click "▶ Run Code" above to execute this code.'}
-                </pre>
-              </div>
             </div>
           </div>
         )}
@@ -1137,7 +1070,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Insert Form */}
             <div className="kv-form-banner">
               <h3>⚡ Write Key-Value to Raft Quorum</h3>
               <form onSubmit={handleKvSet} className="kv-form">
@@ -1157,9 +1089,7 @@ export default function App() {
                   className="input-text"
                   required
                 />
-                <button type="submit" className="btn btn-primary">
-                  SET Key
-                </button>
+                <button type="submit" className="btn btn-primary">SET Key</button>
               </form>
             </div>
 
@@ -1204,16 +1134,24 @@ export default function App() {
                 <h1>Virtual File System (VFS)</h1>
                 <p className="subtitle">Inode-backed file storage with real-time text editing and persistence</p>
               </div>
-              <button className="btn btn-primary" onClick={handleSaveFileEdit}>💾 Save Changes</button>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  if (selectedFile) {
+                    setFiles((prev) =>
+                      prev.map((f) => (f.name === selectedFile.name ? { ...f, content: fileEditContent, size: `${fileEditContent.length} B` } : f))
+                    );
+                    addLog(`💾 VFS: Saved updates to "${selectedFile.name}"`);
+                  }
+                }}
+              >
+                💾 Save Changes
+              </button>
             </div>
 
             <div className="vfs-layout">
-              {/* File list */}
               <div className="vfs-list-pane">
-                <div className="vfs-pane-header">
-                  <h3>Files & Inodes</h3>
-                </div>
-
+                <div className="vfs-pane-header"><h3>Files & Inodes</h3></div>
                 <div className="file-items">
                   {files.map((file) => (
                     <div
@@ -1234,7 +1172,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* File editor / preview */}
               <div className="vfs-preview-pane">
                 <div className="vfs-pane-header">
                   <h3>Editing: {selectedFile ? selectedFile.name : 'None selected'}</h3>
@@ -1254,7 +1191,7 @@ export default function App() {
           </>
         )}
 
-        {/* TAB 7: SYSTEM ARCHITECTURE & MEMORY */}
+        {/* TAB 7: SYSTEM ARCHITECTURE */}
         {activeTab === 'Settings' && (
           <>
             <div className="header">
@@ -1264,7 +1201,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* VISUAL 4GB MEMORY MAP */}
             <div className="memory-map-box">
               <h3>🧠 32-Bit x86 Virtual Memory Map (4GB Address Space)</h3>
               <div className="memory-bar">
@@ -1335,7 +1271,6 @@ export default function App() {
                   <select className="select-input">
                     <option>Round Robin (Preemptive - Default)</option>
                     <option>Priority Preemptive</option>
-                    <option>First-Come First-Served (Cooperative)</option>
                   </select>
                 </div>
               </div>

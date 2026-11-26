@@ -1,0 +1,9 @@
+{
+  "name": "distributed-os-execution-server",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Universal Multi-Language Execution Environment for DistributedOS",
+  "scripts": {
+    "start": "node index.js"
+  }
+}
