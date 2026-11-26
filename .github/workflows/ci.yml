@@ -1,0 +1,52 @@
+name: DistributedOS CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'ui/package-lock.json'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install UI dependencies
+        run: |
+          cd ui
+          npm ci || npm install
+
+      - name: Run VFS & Linux Shell Test Suite
+        run: |
+          cd ui
+          npm test
+
+      - name: Build Web Application
+        run: |
+          cd ui
+          npm run build
+
+      - name: Install Server dependencies
+        run: |
+          cd server
+          npm install
+
+      - name: Run Universal Execution Server Test Suite
+        run: |
+          cd server
+          npm test

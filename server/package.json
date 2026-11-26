@@ -4,6 +4,7 @@
   "type": "module",
   "description": "Universal Multi-Language Execution Environment for DistributedOS",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node test/execution.test.js"
   }
 }
