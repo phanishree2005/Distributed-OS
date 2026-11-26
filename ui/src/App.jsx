@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './index.css';
+import { globalVFS } from './shell/virtualFs';
+import { globalShell } from './shell/shellEngine';
 
 // ----------------------------------------------------
 // CLUSTER & SYSTEM INITIAL STATE
@@ -11,25 +13,19 @@ const INITIAL_NODES = [
   { id: 'NodeD', role: 'Follower', health: 0, load: 0, status: 'Offline', ip: '192.168.1.104', term: 1, x: 200, y: 320 },
 ];
 
-const INITIAL_FILES = [
-  { name: 'kernel.bin', type: 'file', size: '64 KB', permissions: '-rwxr-xr-x', path: '/boot/kernel.bin', content: '[x86 Executable Binary Code: Entry 0x1000, 32-bit Protected Mode, GDT loaded at 0x800]' },
-  { name: 'secret.txt', type: 'file', size: '128 B', permissions: '-rw-r--r--', path: '/root/secret.txt', content: 'CLUSTER_MASTER_KEY=0x9FA82C10E8\nRAFT_TOKEN=d83921af78c02\nREGION=ap-south-1' },
-  { name: 'hosts.conf', type: 'file', size: '256 B', permissions: '-rw-r--r--', path: '/etc/hosts.conf', content: '127.0.0.1 localhost\n192.168.1.101 NodeA\n192.168.1.102 NodeB\n192.168.1.103 NodeC\n192.168.1.104 NodeD' },
-  { name: 'boot.log', type: 'file', size: '1.2 KB', permissions: '-rw-r--r--', path: '/var/log/boot.log', content: '[0.000000] Kernel entry reached at 0x1000\n[0.000014] Enabling A20 gate via keyboard controller\n[0.000045] Loading 32-bit Global Descriptor Table (GDT)\n[0.000120] Paging enabled: 1024 Page Tables mapped (0x0 - 0x400000)\n[0.000250] PIT Timer Interrupt IRQ 0 set to 100 Hz\n[0.000380] Round-Robin scheduler initialized with idle process PID 0' },
-  { name: 'bin/', type: 'folder', size: '--', permissions: 'drwxr-xr-x', path: '/bin', content: 'sh, cat, ls, pwd, echo, kill, ps, ping, python, gcc, node, top, ifconfig, free, df' },
-  { name: 'etc/', type: 'folder', size: '--', permissions: 'drwxr-xr-x', path: '/etc', content: 'hosts.conf, system.conf, network.conf, raft.conf, resolv.conf' }
-];
-
 export default function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [nodes, setNodes] = useState(INITIAL_NODES);
   const [term, setTerm] = useState(1);
   const [tasksCount, setTasksCount] = useState(754);
   const [isElectionInProgress, setIsElectionInProgress] = useState(false);
-  const [currentDir, setCurrentDir] = useState('/root');
-  const [files, setFiles] = useState(INITIAL_FILES);
-  const [selectedFile, setSelectedFile] = useState(INITIAL_FILES[1]);
-  const [fileEditContent, setFileEditContent] = useState(INITIAL_FILES[1].content);
+  const [currentDir, setCurrentDir] = useState(() => globalShell.cwd || '/root');
+  const [files, setFiles] = useState(() => globalVFS.exportFlatList());
+  const [selectedFile, setSelectedFile] = useState(() => {
+    const list = globalVFS.exportFlatList();
+    return list.find((f) => f.name === 'secret.txt') || list[0];
+  });
+  const [fileEditContent, setFileEditContent] = useState(() => (selectedFile ? selectedFile.content : ''));
 
   // ----------------------------------------------------
   // UNIVERSAL CODE RUNNER & DYNAMIC REGISTRY STATE
@@ -64,9 +60,11 @@ export default function App() {
   // Terminal state
   const [cliInput, setCliInput] = useState('');
   const [cliHistory, setCliHistory] = useState([
-    { type: 'system', text: 'DistributedOS Kernel v1.0.4 - Full GNU/Linux Shell & Universal Runtime API' },
-    { type: 'system', text: 'Type "help" for Linux commands, or try "pwd", "ls", "ps", "uname -a", "date", "df -h".' }
+    { type: 'system', text: 'DistributedOS Kernel v1.0.4 - Full GNU/Linux POSIX Shell & Universal Runtime API' },
+    { type: 'system', text: 'Type "help" for Linux commands, or try "pwd", "mkdir test", "cd test", "ls -la", "tree /root".' }
   ]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [tempInput, setTempInput] = useState('');
   const terminalEndRef = useRef(null);
 
   // Settings
@@ -352,112 +350,60 @@ export default function App() {
     addLog(`🗑️ KV-Store: DEL key "${keyToDelete}" acknowledged by quorum`);
   };
 
-  // Terminal commands
+  // Wire cluster callbacks to shell engine
+  useEffect(() => {
+    globalShell.setClusterCallbacks({
+      onFailover: handleKillLeader,
+      onRecover: handleRecoverNodes,
+      onTask: handleDispatchTask
+    });
+  }, [nodes, term, tasksCount]);
+
+  // Terminal commands & History
+  const handleTerminalKeyDown = (e) => {
+    const hist = globalShell.history;
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (hist.length === 0) return;
+      const nextIdx = historyIndex === -1 ? hist.length - 1 : Math.max(0, historyIndex - 1);
+      if (historyIndex === -1) setTempInput(cliInput);
+      setHistoryIndex(nextIdx);
+      setCliInput(hist[nextIdx] || '');
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex === -1) return;
+      const nextIdx = historyIndex + 1;
+      if (nextIdx >= hist.length) {
+        setHistoryIndex(-1);
+        setCliInput(tempInput);
+      } else {
+        setHistoryIndex(nextIdx);
+        setCliInput(hist[nextIdx] || '');
+      }
+    }
+  };
+
   const handleCliSubmit = (e) => {
     e?.preventDefault();
     if (!cliInput.trim()) return;
-    const rawInput = cliInput.trim();
-    const args = rawInput.split(' ').filter(Boolean);
-    const cmd = args[0].toLowerCase();
-    const userEntry = { type: 'user', text: `root@distributed-os:${currentDir}# ${rawInput}` };
-    let response = [];
+    const rawInput = cliInput;
+    const prevCwd = currentDir;
+    const userEntry = { type: 'user', text: `root@distributed-os:${prevCwd}# ${rawInput}` };
 
-    switch (cmd) {
-      case 'pwd':
-        response = [{ type: 'info', text: currentDir }];
-        break;
-      case 'cd':
-        const targetDir = args[1] || '/root';
-        if (targetDir === '..' || targetDir === '../') {
-          setCurrentDir('/');
-        } else if (targetDir === '/' || targetDir === '/root' || targetDir === '/bin' || targetDir === '/etc') {
-          setCurrentDir(targetDir);
-        } else {
-          setCurrentDir(`/${targetDir.replace(/^\//, '')}`);
-        }
-        response = [{ type: 'info', text: '' }];
-        break;
-      case 'whoami':
-        response = [{ type: 'info', text: 'root (uid=0, gid=0, groups=0(root),1(bin),2(daemon))' }];
-        break;
-      case 'uname':
-        response = [{ type: 'info', text: 'Linux distributed-os 1.0.4-x86_32 #1 SMP Mon Nov 26 15:45:00 UTC 2026 i686 GNU/Linux' }];
-        break;
-      case 'date':
-        response = [{ type: 'info', text: new Date().toUTCString() }];
-        break;
-      case 'uptime':
-        response = [{ type: 'info', text: ' 16:05:12 up 4:22,  1 user,  load average: 0.14, 0.22, 0.18' }];
-        break;
-      case 'echo':
-        response = [{ type: 'info', text: rawInput.substring(5).trim().replace(/^["']|["']$/g, '') }];
-        break;
-      case 'ls':
-        response = [
-          { type: 'info', text: 'total 48' },
-          ...files.map((f) => ({
-            type: 'info',
-            text: `${f.permissions}  1 root root ${f.size.padStart(7)} Nov 26 16:00 ${f.name}`
-          }))
-        ];
-        break;
-      case 'cat':
-        if (!args[1]) {
-          response = [{ type: 'error', text: 'cat: missing operand' }];
-        } else {
-          const target = files.find((f) => f.name.toLowerCase() === args[1].toLowerCase());
-          response = target ? [{ type: 'info', text: target.content }] : [{ type: 'error', text: `cat: ${args[1]}: No such file or directory` }];
-        }
-        break;
-      case 'ps':
-        response = [
-          { type: 'info', text: '  PID TTY          TIME CMD' },
-          { type: 'info', text: '    0 ?        00:00:04 [kthreadd]' },
-          { type: 'info', text: '    1 ?        00:00:01 /sbin/init' },
-          { type: 'info', text: '    2 ?        00:00:02 [raft_consensus]' },
-          { type: 'info', text: '    3 ?        00:00:01 /bin/rpc_server --port 8080' },
-          { type: 'info', text: '   42 tty1     00:00:00 /bin/bash' }
-        ];
-        break;
-      case 'df':
-        response = [
-          { type: 'info', text: 'Filesystem     1K-blocks     Used Available Use% Mounted on' },
-          { type: 'info', text: '/dev/ata0p1       524288    34816    489472   7% /' }
-        ];
-        break;
-      case 'free':
-        response = [
-          { type: 'info', text: '               total        used        free      shared  buff/cache   available' },
-          { type: 'info', text: 'Mem:            4096         256        3584          16         256        3824' }
-        ];
-        break;
-      case 'ping':
-        const host = args[1] || 'NodeB';
-        response = [
-          { type: 'info', text: `PING ${host} (192.168.1.102) 56(84) bytes of data.` },
-          { type: 'success', text: `64 bytes from 192.168.1.102: icmp_seq=1 ttl=64 time=0.298 ms` },
-          { type: 'info', text: `3 packets transmitted, 3 received, 0% packet loss` }
-        ];
-        break;
-      case 'clear':
-        setCliHistory([]);
-        setCliInput('');
-        return;
-      case 'help':
-        response = [
-          { type: 'info', text: '=== DistributedOS Standard Linux Commands ===' },
-          { type: 'info', text: '  pwd, cd, ls, cat, echo, whoami, uname -a, date, uptime' },
-          { type: 'info', text: '  ps, df -h, free -m, ping, clear' },
-          { type: 'success', text: '💡 Universal Code Runner: Open the "Universal Code Runner" tab to write and run 30+ real programming languages!' }
-        ];
-        break;
-      default:
-        response = [{ type: 'error', text: `bash: ${cmd}: command not found. Type "help" for a list of commands.` }];
-        break;
+    const result = globalShell.execute(rawInput);
+    setHistoryIndex(-1);
+    setTempInput('');
+    setCliInput('');
+
+    if (result.clear) {
+      setCliHistory([]);
+      return;
     }
 
-    setCliHistory((prev) => [...prev, userEntry, ...response]);
-    setCliInput('');
+    setCurrentDir(result.cwd);
+    const updated = globalVFS.exportFlatList();
+    setFiles(updated);
+    setCliHistory((prev) => [...prev, userEntry, ...(result.output || [])]);
   };
 
   const currentLeader = nodes.find((n) => n.role === 'Leader' && n.status === 'Active');
@@ -1017,7 +963,7 @@ export default function App() {
 
             <div className="command-chips">
               <span className="chips-label">Quick Linux Commands:</span>
-              {['pwd', 'ls', 'whoami', 'uname -a', 'date', 'uptime', 'ps', 'df -h', 'free -m', 'ping NodeB', 'cat secret.txt', 'help'].map((cmd) => (
+              {['pwd', 'mkdir distributed_test', 'cd distributed_test', 'echo "Hello DistributedOS" > test.txt', 'cat test.txt', 'ls -la', 'cd ..', 'ls', 'tree /root', 'whoami', 'uname -a', 'ps', 'df -h', 'free -m', 'help'].map((cmd) => (
                 <button
                   key={cmd}
                   className="chip-btn"
@@ -1051,7 +997,8 @@ export default function App() {
                   className="terminal-input"
                   value={cliInput}
                   onChange={(e) => setCliInput(e.target.value)}
-                  placeholder="Type any command (e.g. 'pwd', 'ls', 'whoami', 'uname -a')..."
+                  onKeyDown={handleTerminalKeyDown}
+                  placeholder="Type any command (e.g. 'pwd', 'mkdir test', 'ls -la', 'cat file')..."
                   autoFocus
                 />
                 <button type="submit" className="btn btn-small btn-primary">Run</button>
@@ -1137,10 +1084,14 @@ export default function App() {
               <button
                 className="btn btn-primary"
                 onClick={() => {
-                  if (selectedFile) {
-                    setFiles((prev) =>
-                      prev.map((f) => (f.name === selectedFile.name ? { ...f, content: fileEditContent, size: `${fileEditContent.length} B` } : f))
-                    );
+                  if (selectedFile && selectedFile.type !== 'folder') {
+                    try {
+                      globalVFS.writeFile(selectedFile.path, fileEditContent);
+                    } catch (err) {
+                      console.warn(err);
+                    }
+                    const updated = globalVFS.exportFlatList();
+                    setFiles(updated);
                     addLog(`💾 VFS: Saved updates to "${selectedFile.name}"`);
                   }
                 }}
