@@ -250,6 +250,158 @@ fn main() {
 `
   },
   {
+    id: 'zig',
+    name: 'Zig',
+    category: 'Hardware and low-level languages',
+    extensions: ['.zig'],
+    editorMode: 'zig',
+    compiler: 'Zig Compiler (zig.exe)',
+    binary: 'zig',
+    versionArgs: ['version'],
+    capabilities: { compile: true, run: true, stdin: true, preview: false },
+    starterCode: `// Zig 0.17 - Bare-Metal Systems Language
+const std = @import("std");
+
+pub fn main() !void {
+    const stdout = std.io.getStdOut().writer();
+    try stdout.print("=========================================\\n", .{});
+    try stdout.print("   DistributedOS Zig Kernel Subsystem    \\n", .{});
+    try stdout.print("=========================================\\n", .{});
+
+    var timer_frequency: u32 = 100;
+    var slice_ms: u32 = 1000 / timer_frequency;
+
+    try stdout.print("PIT Timer Quantum: {} ms per process\\n", .{slice_ms});
+    try stdout.print("Zero runtime memory leak verified.\\n", .{});
+}
+`
+  },
+  {
+    id: 'clojure',
+    name: 'Clojure',
+    category: 'Functional and academic languages',
+    extensions: ['.clj', '.cljs'],
+    editorMode: 'clojure',
+    compiler: 'Babashka Native Clojure Engine',
+    binary: 'bb',
+    versionArgs: ['--version'],
+    capabilities: { compile: false, run: true, stdin: true, preview: false },
+    starterCode: `; Clojure (Babashka Native Fast Engine)
+(println "=== DistributedOS Clojure Lisp Environment ===")
+
+(defn calculate-quorum [total-nodes]
+  (inc (quot total-nodes 2)))
+
+(let [nodes ["NodeA" "NodeB" "NodeC" "NodeD" "NodeE"]
+      quorum (calculate-quorum (count nodes))]
+  (println (str "Cluster Total Nodes: " (count nodes)))
+  (println (str "Required Raft Quorum Majority: " quorum " nodes"))
+  (println (str "Nodes List: " (clojure.string/join ", " nodes))))
+`
+  },
+  {
+    id: 'haskell',
+    name: 'Haskell',
+    category: 'Functional and academic languages',
+    extensions: ['.hs'],
+    editorMode: 'haskell',
+    compiler: 'GHC via Haskell Stack',
+    binary: 'stack',
+    versionArgs: ['--version'],
+    capabilities: { compile: true, run: true, stdin: true, preview: false },
+    starterCode: `-- Haskell (Stack & GHC Engine)
+module Main where
+
+fib :: Integer -> Integer
+fib 0 = 0
+fib 1 = 1
+fib n = fib (n - 1) + fib (n - 2)
+
+main :: IO ()
+main = do
+    putStrLn "=== DistributedOS Pure Functional Haskell ==="
+    let nodes = ["NodeA", "NodeB", "NodeC"]
+    putStrLn $ "Cluster Nodes: " ++ show nodes
+    putStrLn $ "Fibonacci Sequence (1..10): " ++ show (map fib [1..10])
+`
+  },
+  {
+    id: 'lua',
+    name: 'Lua',
+    category: 'General-purpose',
+    extensions: ['.lua'],
+    editorMode: 'lua',
+    compiler: 'Lua 5.4 Standalone Engine',
+    binary: 'lua',
+    versionArgs: ['-v'],
+    capabilities: { compile: false, run: true, stdin: true, preview: false },
+    starterCode: `-- Lua 5.4 Embedded Scripting Engine
+print("=========================================")
+print("  DistributedOS Lua Kernel Extension     ")
+print("=========================================")
+
+local nodes = { "NodeA", "NodeB", "NodeC" }
+for i, node in ipairs(nodes) do
+    print(string.format("  [%d] Node %s -> Ping: %.2f ms", i, node, math.random() * 0.5))
+end
+print("Lua script executed cleanly.")
+`
+  },
+  {
+    id: 'verilog',
+    name: 'Verilog HDL',
+    category: 'Hardware and low-level languages',
+    extensions: ['.v'],
+    editorMode: 'verilog',
+    compiler: 'Pyverilog HDL Hardware Simulator',
+    binary: 'python',
+    versionArgs: ['-c', 'import pyverilog; print("Pyverilog " + pyverilog.__version__)'],
+    capabilities: { compile: true, run: true, stdin: false, preview: false },
+    starterCode: `// Verilog HDL - Hardware Digital Circuit Module
+module cluster_arbiter (
+    input wire clk,
+    input wire rst_n,
+    input wire [3:0] req,
+    output reg [3:0] gnt
+);
+
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n)
+      gnt <= 4'b0000;
+    else if (req[0])
+      gnt <= 4'b0001; // NodeA has priority
+    else if (req[1])
+      gnt <= 4'b0010; // NodeB
+    else
+      gnt <= 4'b0000;
+  end
+
+endmodule
+`
+  },
+  {
+    id: 'bash',
+    name: 'Bash',
+    category: 'Shell and scripting',
+    extensions: ['.sh', '.bash'],
+    editorMode: 'shell',
+    compiler: 'GNU Bash (Git Bash Environment)',
+    binary: 'bash',
+    versionArgs: ['--version'],
+    capabilities: { compile: false, run: true, stdin: true, preview: false },
+    starterCode: `#!/bin/bash
+# DistributedOS POSIX Shell Environment
+echo "=== DistributedOS Bash Environment ==="
+echo "Host Kernel: $(uname -s 2>/dev/null || echo 'DistributedOS 1.0.4')"
+echo "Process ID: $$"
+
+for node in NodeA NodeB NodeC; do
+    echo "Pinging cluster node: $node (ACK 0.28ms)"
+done
+echo "Bash script executed cleanly with exit code 0."
+`
+  },
+  {
     id: 'powershell',
     name: 'PowerShell',
     category: 'Shell and scripting',
@@ -293,28 +445,6 @@ echo [OK] Checking NodeA: ONLINE
 echo [OK] Checking NodeB: ONLINE
 echo [OK] Checking NodeC: ONLINE
 echo All systems operational.
-`
-  },
-  {
-    id: 'bash',
-    name: 'Bash',
-    category: 'Shell and scripting',
-    extensions: ['.sh', '.bash'],
-    editorMode: 'shell',
-    compiler: 'GNU Bash',
-    binary: 'bash',
-    versionArgs: ['--version'],
-    capabilities: { compile: false, run: true, stdin: true, preview: false },
-    starterCode: `#!/bin/bash
-# DistributedOS Shell Script
-echo "=== DistributedOS POSIX Environment ==="
-echo "Host Kernel: $(uname -s 2>/dev/null || echo 'DistributedOS 1.0.4')"
-echo "Process ID: $$"
-
-for node in NodeA NodeB NodeC; do
-    echo "Pinging cluster node: $node (ACK)"
-done
-echo "Bash script executed cleanly with exit code 0."
 `
   },
   {
@@ -373,216 +503,6 @@ SELECT * FROM cluster_nodes WHERE health >= 90;
 </html>
 `
   },
-
-  // -------------------------------------------------------------
-  // Languages with Availability Tracking (Installed vs Unavailable)
-  // -------------------------------------------------------------
-  {
-    id: 'go',
-    name: 'Go',
-    category: 'General-purpose',
-    extensions: ['.go'],
-    editorMode: 'golang',
-    compiler: 'Go Toolchain (gc)',
-    binary: 'go',
-    versionArgs: ['version'],
-    capabilities: { compile: true, run: true, stdin: true, preview: false },
-    starterCode: `package main
-
-import "fmt"
-
-func main() {
-    fmt.Println("DistributedOS Raft Consensus Engine (Go)")
-}
-`
-  },
-  {
-    id: 'csharp',
-    name: 'C#',
-    category: 'General-purpose',
-    extensions: ['.cs'],
-    editorMode: 'csharp',
-    compiler: '.NET SDK / Roslyn',
-    binary: 'dotnet',
-    versionArgs: ['--version'],
-    capabilities: { compile: true, run: true, stdin: true, preview: false },
-    starterCode: `using System;
-
-class Program {
-    static void Main() {
-        Console.WriteLine("Hello from DistributedOS C# / .NET!");
-    }
-}
-`
-  },
-  {
-    id: 'ruby',
-    name: 'Ruby',
-    category: 'General-purpose',
-    extensions: ['.rb'],
-    editorMode: 'ruby',
-    compiler: 'CRuby (YARV)',
-    binary: 'ruby',
-    versionArgs: ['--version'],
-    capabilities: { compile: false, run: true, stdin: true, preview: false },
-    starterCode: `puts "DistributedOS Ruby Script"
-nodes = ["NodeA", "NodeB", "NodeC"]
-nodes.each { |node| puts "Cluster node: #{node}" }
-`
-  },
-  {
-    id: 'php',
-    name: 'PHP',
-    category: 'General-purpose',
-    extensions: ['.php'],
-    editorMode: 'php',
-    compiler: 'PHP CLI Engine (Zend)',
-    binary: 'php',
-    versionArgs: ['--version'],
-    capabilities: { compile: false, run: true, stdin: true, preview: false },
-    starterCode: `<?php
-echo "DistributedOS PHP Runtime\\n";
-$data = ["status" => "HEALTHY", "term" => 1];
-echo json_encode($data, JSON_PRETTY_PRINT);
-`
-  },
-  {
-    id: 'kotlin',
-    name: 'Kotlin',
-    category: 'General-purpose',
-    extensions: ['.kt', '.kts'],
-    editorMode: 'kotlin',
-    compiler: 'Kotlin Compiler (kotlinc)',
-    binary: 'kotlinc',
-    versionArgs: ['-version'],
-    capabilities: { compile: true, run: true, stdin: true, preview: false },
-    starterCode: `fun main() {
-    println("DistributedOS Kotlin Runner")
-}
-`
-  },
-  {
-    id: 'swift',
-    name: 'Swift',
-    category: 'General-purpose',
-    extensions: ['.swift'],
-    editorMode: 'swift',
-    compiler: 'Swift Compiler (swiftc)',
-    binary: 'swift',
-    versionArgs: ['--version'],
-    capabilities: { compile: true, run: true, stdin: true, preview: false },
-    starterCode: `print("DistributedOS Swift Environment")`
-  },
-  {
-    id: 'dart',
-    name: 'Dart',
-    category: 'General-purpose',
-    extensions: ['.dart'],
-    editorMode: 'dart',
-    compiler: 'Dart VM',
-    binary: 'dart',
-    versionArgs: ['--version'],
-    capabilities: { compile: false, run: true, stdin: true, preview: false },
-    starterCode: `void main() {
-  print('DistributedOS Dart Environment');
-}`
-  },
-  {
-    id: 'perl',
-    name: 'Perl',
-    category: 'General-purpose',
-    extensions: ['.pl'],
-    editorMode: 'perl',
-    compiler: 'Perl 5 Interpreter',
-    binary: 'perl',
-    versionArgs: ['--version'],
-    capabilities: { compile: false, run: true, stdin: true, preview: false },
-    starterCode: `print "DistributedOS Perl Script\\n";`
-  },
-  {
-    id: 'lua',
-    name: 'Lua',
-    category: 'General-purpose',
-    extensions: ['.lua'],
-    editorMode: 'lua',
-    compiler: 'Lua Standalone Interpreter',
-    binary: 'lua',
-    versionArgs: ['-v'],
-    capabilities: { compile: false, run: true, stdin: true, preview: false },
-    starterCode: `print("DistributedOS Lua Script")`
-  },
-  {
-    id: 'r',
-    name: 'R',
-    category: 'Scientific and numerical computing',
-    extensions: ['.r', '.R'],
-    editorMode: 'r',
-    compiler: 'R Statistical Language',
-    binary: 'Rscript',
-    versionArgs: ['--version'],
-    capabilities: { compile: false, run: true, stdin: false, preview: false },
-    starterCode: `cat("DistributedOS R Analysis\\n")`
-  },
-  {
-    id: 'julia',
-    name: 'Julia',
-    category: 'Scientific and numerical computing',
-    extensions: ['.jl'],
-    editorMode: 'julia',
-    compiler: 'Julia Language Engine',
-    binary: 'julia',
-    versionArgs: ['--version'],
-    capabilities: { compile: false, run: true, stdin: true, preview: false },
-    starterCode: `println("DistributedOS Julia Scientific Computing")`
-  },
-  {
-    id: 'scala',
-    name: 'Scala',
-    category: 'General-purpose',
-    extensions: ['.scala'],
-    editorMode: 'scala',
-    compiler: 'Scala 3 Compiler (scalac)',
-    binary: 'scalac',
-    versionArgs: ['-version'],
-    capabilities: { compile: true, run: true, stdin: true, preview: false },
-    starterCode: `@main def run() = println("DistributedOS Scala Runtime")`
-  },
-  {
-    id: 'haskell',
-    name: 'Haskell',
-    category: 'Functional and academic languages',
-    extensions: ['.hs'],
-    editorMode: 'haskell',
-    compiler: 'GHC (Glasgow Haskell Compiler)',
-    binary: 'ghc',
-    versionArgs: ['--version'],
-    capabilities: { compile: true, run: true, stdin: true, preview: false },
-    starterCode: `main = putStrLn "DistributedOS Haskell Environment"`
-  },
-  {
-    id: 'elixir',
-    name: 'Elixir',
-    category: 'Functional and academic languages',
-    extensions: ['.ex', '.exs'],
-    editorMode: 'elixir',
-    compiler: 'Elixir / BEAM VM',
-    binary: 'elixir',
-    versionArgs: ['--version'],
-    capabilities: { compile: false, run: true, stdin: true, preview: false },
-    starterCode: `IO.puts("DistributedOS Elixir Actor Model")`
-  },
-  {
-    id: 'clojure',
-    name: 'Clojure',
-    category: 'Functional and academic languages',
-    extensions: ['.clj'],
-    editorMode: 'clojure',
-    compiler: 'Clojure CLI / JVM',
-    binary: 'clojure',
-    versionArgs: ['-Sdescribe'],
-    capabilities: { compile: false, run: true, stdin: false, preview: false },
-    starterCode: `(println "DistributedOS Clojure Lisp")`
-  },
   {
     id: 'fortran',
     name: 'Fortran',
@@ -596,22 +516,6 @@ echo json_encode($data, JSON_PRETTY_PRINT);
     starterCode: `program hello
   print *, "DistributedOS High Performance Fortran"
 end program hello`
-  },
-  {
-    id: 'zig',
-    name: 'Zig',
-    category: 'Hardware and low-level languages',
-    extensions: ['.zig'],
-    editorMode: 'zig',
-    compiler: 'Zig Toolchain',
-    binary: 'zig',
-    versionArgs: ['version'],
-    capabilities: { compile: true, run: true, stdin: true, preview: false },
-    starterCode: `const std = @import("std");
-
-pub fn main() void {
-    std.debug.print("DistributedOS Zig Systems Programming\\n", .{});
-}`
   },
   {
     id: 'asm_x86',
@@ -639,23 +543,6 @@ _start:
 
     mov eax, 1
     int 0x80`
-  },
-  {
-    id: 'verilog',
-    name: 'Verilog HDL',
-    category: 'Hardware and low-level languages',
-    extensions: ['.v'],
-    editorMode: 'verilog',
-    compiler: 'Icarus Verilog (iverilog)',
-    binary: 'iverilog',
-    versionArgs: ['-v'],
-    capabilities: { compile: true, run: true, stdin: false, preview: false },
-    starterCode: `module cluster_arbiter;
-  initial begin
-    $display("DistributedOS Verilog Hardware Module Initialized");
-    $finish;
-  end
-endmodule`
   },
   {
     id: 'json',
@@ -695,5 +582,149 @@ endmodule`
     - id: NodeB
       role: follower
 `
+  },
+  {
+    id: 'elixir',
+    name: 'Elixir',
+    category: 'Functional and academic languages',
+    extensions: ['.ex', '.exs'],
+    editorMode: 'elixir',
+    compiler: 'Elixir / BEAM VM',
+    binary: 'elixir',
+    versionArgs: ['--version'],
+    capabilities: { compile: false, run: true, stdin: true, preview: false },
+    starterCode: `IO.puts("DistributedOS Elixir Actor Model")`
+  },
+  {
+    id: 'go',
+    name: 'Go',
+    category: 'General-purpose',
+    extensions: ['.go'],
+    editorMode: 'golang',
+    compiler: 'Go Toolchain (gc)',
+    binary: 'go',
+    versionArgs: ['version'],
+    capabilities: { compile: true, run: true, stdin: true, preview: false },
+    starterCode: `package main\nimport "fmt"\nfunc main() {\n    fmt.Println("DistributedOS Raft Consensus Engine (Go)")\n}`
+  },
+  {
+    id: 'ruby',
+    name: 'Ruby',
+    category: 'General-purpose',
+    extensions: ['.rb'],
+    editorMode: 'ruby',
+    compiler: 'CRuby (YARV)',
+    binary: 'ruby',
+    versionArgs: ['--version'],
+    capabilities: { compile: false, run: true, stdin: true, preview: false },
+    starterCode: `puts "DistributedOS Ruby Script"`
+  },
+  {
+    id: 'php',
+    name: 'PHP',
+    category: 'General-purpose',
+    extensions: ['.php'],
+    editorMode: 'php',
+    compiler: 'PHP CLI Engine (Zend)',
+    binary: 'php',
+    versionArgs: ['--version'],
+    capabilities: { compile: false, run: true, stdin: true, preview: false },
+    starterCode: `<?php echo "DistributedOS PHP Runtime\\n"; ?>`
+  },
+  {
+    id: 'csharp',
+    name: 'C#',
+    category: 'General-purpose',
+    extensions: ['.cs'],
+    editorMode: 'csharp',
+    compiler: '.NET SDK / Roslyn',
+    binary: 'dotnet',
+    versionArgs: ['--version'],
+    capabilities: { compile: true, run: true, stdin: true, preview: false },
+    starterCode: `using System;\nclass Program { static void Main() { Console.WriteLine("C# Runtime"); } }`
+  },
+  {
+    id: 'perl',
+    name: 'Perl',
+    category: 'General-purpose',
+    extensions: ['.pl'],
+    editorMode: 'perl',
+    compiler: 'Perl 5 Interpreter',
+    binary: 'perl',
+    versionArgs: ['--version'],
+    capabilities: { compile: false, run: true, stdin: true, preview: false },
+    starterCode: `print "DistributedOS Perl Script\\n";`
+  },
+  {
+    id: 'r',
+    name: 'R',
+    category: 'Scientific and numerical computing',
+    extensions: ['.r', '.R'],
+    editorMode: 'r',
+    compiler: 'R Statistical Language',
+    binary: 'Rscript',
+    versionArgs: ['--version'],
+    capabilities: { compile: false, run: true, stdin: false, preview: false },
+    starterCode: `cat("DistributedOS R Analysis\\n")`
+  },
+  {
+    id: 'julia',
+    name: 'Julia',
+    category: 'Scientific and numerical computing',
+    extensions: ['.jl'],
+    editorMode: 'julia',
+    compiler: 'Julia Language Engine',
+    binary: 'julia',
+    versionArgs: ['--version'],
+    capabilities: { compile: false, run: true, stdin: true, preview: false },
+    starterCode: `println("DistributedOS Julia Scientific Computing")`
+  },
+  {
+    id: 'scala',
+    name: 'Scala',
+    category: 'General-purpose',
+    extensions: ['.scala'],
+    editorMode: 'scala',
+    compiler: 'Scala 3 Compiler (scalac)',
+    binary: 'scalac',
+    versionArgs: ['-version'],
+    capabilities: { compile: true, run: true, stdin: true, preview: false },
+    starterCode: `@main def run() = println("DistributedOS Scala Runtime")`
+  },
+  {
+    id: 'dart',
+    name: 'Dart',
+    category: 'General-purpose',
+    extensions: ['.dart'],
+    editorMode: 'dart',
+    compiler: 'Dart VM',
+    binary: 'dart',
+    versionArgs: ['--version'],
+    capabilities: { compile: false, run: true, stdin: true, preview: false },
+    starterCode: `void main() { print("DistributedOS Dart"); }`
+  },
+  {
+    id: 'swift',
+    name: 'Swift',
+    category: 'General-purpose',
+    extensions: ['.swift'],
+    editorMode: 'swift',
+    compiler: 'Swift Compiler (swiftc)',
+    binary: 'swift',
+    versionArgs: ['--version'],
+    capabilities: { compile: true, run: true, stdin: true, preview: false },
+    starterCode: `print("DistributedOS Swift Environment")`
+  },
+  {
+    id: 'kotlin',
+    name: 'Kotlin',
+    category: 'General-purpose',
+    extensions: ['.kt', '.kts'],
+    editorMode: 'kotlin',
+    compiler: 'Kotlin Compiler (kotlinc)',
+    binary: 'kotlinc',
+    versionArgs: ['-version'],
+    capabilities: { compile: true, run: true, stdin: true, preview: false },
+    starterCode: `fun main() { println("DistributedOS Kotlin Runner"); }`
   }
 ];
